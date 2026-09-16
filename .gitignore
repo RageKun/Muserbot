@@ -1,0 +1,27 @@
+# Environment & Secrets
+.env
+*.env
+
+# Telegram Session Files
+*.session
+*.session-journal
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# OS and Editor metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs & Temp files
+*.log
+temp/

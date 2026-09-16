@@ -1,0 +1,5 @@
+telethon
+pytgcalls[telethon]
+yt-dlp
+aiohttp
+python-dotenv
