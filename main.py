@@ -34,7 +34,7 @@ except ValueError:
 
 API_HASH = os.getenv("API_HASH", "").strip()
 STRING_SESSION = os.getenv("STRING_SESSION", "").strip()
-PORT = int(os.getenv("PORT", 5000))  # Default to 5000
+PORT = int(os.getenv("PORT", 5000))
 
 if not API_ID or not API_HASH or not STRING_SESSION:
     print("❌ ERROR: Missing credentials!")
@@ -140,25 +140,45 @@ async def start_web_server():
 # Music Player Logic
 # ---------------------------------------------------------
 def get_yt_stream(query):
+    # Enforce picking the first search result if it's not a direct link
+    if not query.startswith("http"):
+        query = f"ytsearch1:{query}"
+        
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
-        'default_search': 'ytsearch',
-        # 🚨 THE FIX: Use tv, web, and android clients to match cookies and avoid JS challenges
-        'extractor_args': {'youtube': {'client': ['tv', 'web', 'android']}}
+        'extractor_args': {
+            'youtube': {
+                # Removed 'web' completely to avoid the JS reload challenge
+                'client': ['android', 'tv', 'ios']
+            }
+        }
     }
     
-    for path in ["cookies.txt", "/etc/secrets/cookies.txt"]:
-        if os.path.exists(path):
-            ydl_opts['cookiefile'] = path
-            logger.info(f"✅ Injecting cookies from: {path}")
-            break
+    if os.path.exists("cookies.txt"):
+        ydl_opts['cookiefile'] = "cookies.txt"
+        logger.info("✅ Injecting cookies.txt")
 
     with YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(query, download=False)
-        if 'entries' in info: info = info['entries'][0]
-        return info['title'], info['url']
+        try:
+            info = ydl.extract_info(query, download=False)
+        except Exception as e:
+            # Fallback to YouTube Music if standard search gets blocked
+            if "ytsearch1:" in query:
+                logger.warning("Standard search blocked. Falling back to YouTube Music...")
+                query = query.replace("ytsearch1:", "ytmsearch1:")
+                info = ydl.extract_info(query, download=False)
+            else:
+                raise e
+                
+        # Extract the first video from the search results
+        if 'entries' in info and len(info['entries']) > 0:
+            info = info['entries'][0]
+        elif 'entries' in info:
+            raise Exception("No results found for that song.")
+            
+        return info.get('title', 'Unknown Title'), info.get('url')
 
 @KnightX.on(events.NewMessage(pattern=r"^\.play\s+(.+)$", outgoing=True))
 async def cmd_play(event):
