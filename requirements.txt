@@ -1,5 +1,5 @@
 telethon
-pytgcalls[telethon]
+py-tgcalls
 yt-dlp
 aiohttp
 python-dotenv
