@@ -137,12 +137,14 @@ async def start_web_server():
 # Music Player Logic
 # ---------------------------------------------------------
 def get_yt_stream(query):
+    # Enforce picking exactly the first search result securely
+    if not query.startswith("http"):
+        query = f"ytsearch1:{query}"
+        
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
-        # Force yt-dlp to natively return only the first search result
-        'default_search': 'ytsearch1', 
         'extractor_args': {
             'youtube': {
                 'client': ['android', 'tv', 'ios']
@@ -155,17 +157,8 @@ def get_yt_stream(query):
         logger.info("✅ Injecting cookies.txt")
 
     with YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(query, download=False)
-        except Exception as e:
-            # Safe fallback to YouTube Music without using invalid URL schemes
-            if not query.startswith("http"):
-                logger.warning(f"Standard search failed: {e}. Falling back to YT Music...")
-                info = ydl.extract_info(f"ytmsearch:{query}", download=False)
-            else:
-                raise e
+        info = ydl.extract_info(query, download=False)
                 
-        # Dig into the search results to pull the video data
         if 'entries' in info:
             if len(info['entries']) == 0:
                 raise Exception("No results found for that song.")
