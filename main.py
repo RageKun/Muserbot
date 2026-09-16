@@ -34,7 +34,7 @@ except ValueError:
 
 API_HASH = os.getenv("API_HASH", "").strip()
 STRING_SESSION = os.getenv("STRING_SESSION", "").strip()
-PORT = int(os.getenv("PORT", 5000))  # Default to 5000 as requested
+PORT = int(os.getenv("PORT", 5000))  # Default to 5000
 
 if not API_ID or not API_HASH or not STRING_SESSION:
     print("❌ ERROR: Missing credentials!")
@@ -116,13 +116,13 @@ async def handle_update_cookies(request):
     if str(passcode) != str(API_ID):
         return web.Response(text="❌ Unauthorized: Incorrect Passcode.", status=403)
         
-    if "# Netscape HTTP Cookie File" not in cookies:
-        return web.Response(text="❌ Error: Invalid format. Make sure you used the 'Get cookies.txt LOCALLY' extension.", status=400)
+    if "youtube.com" not in cookies and "# Netscape HTTP Cookie File" not in cookies:
+        return web.Response(text="❌ Error: Invalid format. Are you sure these are Netscape format cookies?", status=400)
         
     try:
         with open("cookies.txt", "w") as f:
             f.write(cookies)
-        return web.Response(text="✅ Success! Cookies saved. You can now use the .play command in Telegram.")
+        return web.Response(text="✅ Success! Cookies saved. Go to Telegram and test the .play command.")
     except Exception as e:
         return web.Response(text=f"❌ Failed to write file: {e}", status=500)
 
@@ -145,13 +145,15 @@ def get_yt_stream(query):
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch',
-        'extractor_args': {'youtube': {'client': ['android', 'ios']}} # Spoof mobile client
+        # 🚨 THE FIX: Use tv, web, and android clients to match cookies and avoid JS challenges
+        'extractor_args': {'youtube': {'client': ['tv', 'web', 'android']}}
     }
     
-    # Check for the cookies we uploaded via the Web Panel
-    if os.path.exists("cookies.txt"):
-        ydl_opts['cookiefile'] = "cookies.txt"
-        logger.info("✅ Injecting cookies.txt into yt-dlp")
+    for path in ["cookies.txt", "/etc/secrets/cookies.txt"]:
+        if os.path.exists(path):
+            ydl_opts['cookiefile'] = path
+            logger.info(f"✅ Injecting cookies from: {path}")
+            break
 
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(query, download=False)
@@ -299,7 +301,7 @@ async def cmd_ping(event):
 
 @KnightX.on(events.NewMessage(pattern=r"^\.help$", outgoing=True))
 async def cmd_help(event):
-    await event.respond("🛡 **KnightX Userbot Online**\n\nCommands: `.play`, `.skip`, `.stop`, `.queue`, `.purge`, `.purge all`, `.calculate`, `.ping`, `.scrape`.")
+    await event.respond("🛡 **KnightX Userbot Online**\n\nCommands: `.play`, `.skip`, `.stop`, `.queue`, `.purge`, `.calculate`, `.ping`.")
 
 # ---------------------------------------------------------
 # Application Entry Point
